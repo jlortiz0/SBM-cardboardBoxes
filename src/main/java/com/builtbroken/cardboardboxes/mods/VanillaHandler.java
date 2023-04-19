@@ -3,29 +3,21 @@ package com.builtbroken.cardboardboxes.mods;
 import com.builtbroken.cardboardboxes.handler.Handler;
 import com.builtbroken.cardboardboxes.handler.HandlerManager;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.ChestBlock;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.util.Hand;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.world.World;
 
-public class VanillaHandler extends ModHandler {
-    private ForgeConfigSpec.BooleanValue spawnerVal;
+public class VanillaHandler{
 
-    @Override
-    public void build(ForgeConfigSpec.Builder b) {
-        spawnerVal = b.comment("Prevents mobs spawners from being placed into cardboard boxes").define("BlackListSettings.BlackListMobSpawners", true);
-    }
-
-    @Override
-    public void load(ForgeConfigSpec configuration) {
-        if (spawnerVal.get()) {
+    public static void register(Configuration cfg) {
+        if (cfg.allowSpawners) {
             HandlerManager.INSTANCE.banBlock(Blocks.SPAWNER);
 
             HandlerManager.INSTANCE.banBlockEntity(BlockEntityType.MOB_SPAWNER);
@@ -34,11 +26,12 @@ public class VanillaHandler extends ModHandler {
         //Fix for chests being rotated in opposite direction
         HandlerManager.INSTANCE.registerHandler(Blocks.CHEST, new Handler() {
             @Override
-            public void postPlaceBlock(Player player, Level level, BlockPos pos, InteractionHand hand, Direction direction, float hitX, float hitY, float hitZ, BlockState state, CompoundTag saveData) {
+            public void postPlaceBlock(PlayerEntity player, World level, BlockPos pos, Hand hand, Direction direction, float hitX, float hitY, float hitZ, BlockState state, NbtCompound saveData) {
                 BlockState blockstate = level.getBlockState(pos);
-                if (blockstate.getBlock() == Blocks.CHEST && blockstate.getValue(ChestBlock.FACING) != player.getDirection().getOpposite()) {
-                    blockstate = blockstate.setValue(ChestBlock.FACING, player.getDirection().getOpposite());
-                    level.setBlockAndUpdate(pos, blockstate);
+                if (blockstate.getBlock() == Blocks.CHEST && blockstate.get(ChestBlock.FACING) != player.getHorizontalFacing().getOpposite()) {
+                    while (blockstate.get(ChestBlock.FACING) != player.getHorizontalFacing())
+                        blockstate = blockstate.cycle(ChestBlock.FACING);
+                    level.setBlockState(pos, blockstate, 2);
                 }
             }
         });

@@ -6,11 +6,11 @@ import java.util.List;
 
 import com.builtbroken.cardboardboxes.box.BoxBlockItem;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.block.Block;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 /**
  * Handles interaction between {@link BoxBlockItem} and tiles
@@ -83,14 +83,14 @@ public class HandlerManager {
     /**
      * Called to check if a block can be picked up inside a box
      */
-    public CanPickUpResult canPickUp(Level world, BlockPos pos) {
+    public CanPickUpResult canPickUp(World world, BlockPos pos) {
         Block block = world.getBlockState(pos).getBlock();
         if (!blockBanList.contains(block)) {
             BlockEntity blockEntity = world.getBlockEntity(pos);
             if (blockEntity != null) {
                 if (!blockEntityBanList.contains(blockEntity.getType())) {
                     //Check if we even have data to store, no data no point in using a box
-                    return !blockEntity.saveWithoutMetadata().isEmpty() ? CanPickUpResult.CAN_PICK_UP : CanPickUpResult.NO_DATA;
+                    return !blockEntity.createNbt().isEmpty() ? CanPickUpResult.CAN_PICK_UP : CanPickUpResult.NO_DATA;
                 }
                 return CanPickUpResult.BANNED_BLOCK_ENTITY;
             }

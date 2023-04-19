@@ -146,7 +146,7 @@ public class BoxBlockItem extends BlockItem {
                     BlockEntity blockEntity = context.getWorld().getBlockEntity(pos);
                     if (blockEntity != null) {
                         if (handler != null) {
-                            handler.loadData(blockEntity, storedBlockEntityData);
+                            handler.readNbt(blockEntity, storedBlockEntityData);
                         } else {
                             blockEntity.readNbt(storedBlockEntityData);
                         }
@@ -162,9 +162,9 @@ public class BoxBlockItem extends BlockItem {
                 heldItemStack.decrement(1);
 
                 //Return empty box
-                if (!context.getPlayer().isCreative() && !context.getPlayer().getInventory().insertStack(new ItemStack(Cardboardboxes.BOX_BLOCK.get()))) {
+                if (!context.getPlayer().isCreative() && !context.getPlayer().getInventory().insertStack(new ItemStack(Cardboardboxes.BOX_BLOCK))) {
                     Vec3d p = context.getPlayer().getPos();
-                    context.getWorld().spawnEntity(new ItemEntity(context.getWorld(), p.x, p.y, p.z, new ItemStack(Cardboardboxes.BOX_BLOCK.get())));
+                    context.getWorld().spawnEntity(new ItemEntity(context.getWorld(), p.x, p.y, p.z, new ItemStack(Cardboardboxes.BOX_BLOCK)));
                 }
             }
 

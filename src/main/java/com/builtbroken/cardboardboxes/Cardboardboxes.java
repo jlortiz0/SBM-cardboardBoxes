@@ -37,9 +37,9 @@ public class Cardboardboxes implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        Registry.register(Registry.BLOCK, new Identifier(DOMAIN, "cardboard_box"), BOX_BLOCK);
-        Registry.register(Registry.ITEM, new Identifier(DOMAIN, "cardboard_box"), BOX_ITEM);
-        BOX_BLOCK_ENTITY_TYPE = Registry.register(Registry.BLOCK_ENTITY_TYPE, new Identifier(DOMAIN, "cardboard_box"),
+        Registry.register(Registry.BLOCK, new Identifier(DOMAIN, "cardboardbox"), BOX_BLOCK);
+        Registry.register(Registry.ITEM, new Identifier(DOMAIN, "cardboardbox"), BOX_ITEM);
+        BOX_BLOCK_ENTITY_TYPE = Registry.register(Registry.BLOCK_ENTITY_TYPE, new Identifier(DOMAIN, "cardboardbox"),
                 FabricBlockEntityTypeBuilder.create(BoxBlockEntity::new, BOX_BLOCK).build());
         HandlerManager.INSTANCE.banBlock(BOX_BLOCK);
         HandlerManager.INSTANCE.banBlockEntity(BOX_BLOCK_ENTITY_TYPE);

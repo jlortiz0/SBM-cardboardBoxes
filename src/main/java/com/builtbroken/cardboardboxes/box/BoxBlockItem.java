@@ -10,28 +10,27 @@ import com.builtbroken.cardboardboxes.handler.CanPickUpResult;
 import com.builtbroken.cardboardboxes.handler.Handler;
 import com.builtbroken.cardboardboxes.handler.HandlerManager;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.client.item.TooltipContext;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.*;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.sound.BlockSoundGroup;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableText;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * ItemBlock for the box
@@ -41,7 +40,7 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public class BoxBlockItem extends BlockItem {
     public BoxBlockItem(Block block) {
-        super(block, new Item.Properties().tab(CreativeModeTab.TAB_DECORATIONS));
+        super(block, new Item.Settings().group(ItemGroup.DECORATIONS));
     }
 
     //TODO add property to change render if contains item
@@ -49,28 +48,28 @@ public class BoxBlockItem extends BlockItem {
     //TODO add property to change render color, label, etc
 
     @Override
-    public InteractionResult useOn(UseOnContext context) {
+    public ActionResult useOn(ItemUsageContext context) {
         //Run all logic server side
-        Level level = context.getLevel();
-        if (level.isClientSide) {
-            return InteractionResult.SUCCESS;
+        World level = context.getWorld();
+        if (level.isClient) {
+            return ActionResult.SUCCESS;
         }
 
-        Player player = context.getPlayer();
-        InteractionHand hand = context.getHand();
-        final ItemStack heldItemStack = context.getItemInHand();
+        PlayerEntity player = context.getPlayer();
+        Hand hand = context.getHand();
+        final ItemStack heldItemStack = context.getStack();
         if (!heldItemStack.isEmpty()) {
             final BlockState storeBlock = getStoredBlock(heldItemStack);
             if (storeBlock.getBlock() != Blocks.AIR) {
-                return tryToPlaceBlock(new BlockPlaceContext(context));
+                return tryToPlaceBlock(new ItemPlacementContext(context));
             } else {
-                return tryToPickupBlock(player, level, context.getClickedPos(), hand, context.getClickedFace());
+                return tryToPickupBlock(player, level, context.getBlockPos(), hand, context.getSide());
             }
         }
-        return InteractionResult.FAIL;
+        return ActionResult.FAIL;
     }
 
-    protected InteractionResult tryToPickupBlock(Player player, Level level, BlockPos pos, InteractionHand hand, Direction direction) {
+    protected ActionResult tryToPickupBlock(PlayerEntity player, World level, BlockPos pos, Hand hand, Direction direction) {
         //Check that we can pick up block
         CanPickUpResult result = HandlerManager.INSTANCE.canPickUp(level, pos);
 
@@ -81,13 +80,13 @@ public class BoxBlockItem extends BlockItem {
                 //Get stack
                 final BlockState state = level.getBlockState(pos);
                 //Copy block entity data
-                CompoundTag tag = blockEntity.saveWithId();
+                NbtCompound tag = blockEntity.createNbtWithId();
 
                 //Remove block entity
                 level.removeBlockEntity(pos);
 
                 //Replace block with our block
-                level.setBlock(pos, Cardboardboxes.BOX_BLOCK.get().defaultBlockState(), 2);
+                level.setBlockState(pos, Cardboardboxes.BOX_BLOCK.get().defaultBlockState(), 2);
 
                 //Get our block entity
                 if (level.getBlockEntity(pos) instanceof BoxBlockEntity boxBlockEntity) {
@@ -96,102 +95,103 @@ public class BoxBlockItem extends BlockItem {
                     boxBlockEntity.setDataForPlacement(tag);
 
                     //Consume item
-                    player.getItemInHand(hand).shrink(1);
+                    player.getStackInHand(hand).decrement(1);
 
                     //Done
-                    return InteractionResult.SUCCESS;
+                    return ActionResult.SUCCESS;
                 }
             } else {
-                player.displayClientMessage(new TranslatableComponent(getDescriptionId() + ".noData"), true);
+                player.sendMessage(new TranslatableText(getTranslationKey() + ".noData"), true);
             }
         } else if (result == CanPickUpResult.BANNED_BLOCK_ENTITY) {
-            player.displayClientMessage(new TranslatableComponent(getDescriptionId() + ".banned.tile"), true);
+            player.sendMessage(new TranslatableText(getTranslationKey() + ".banned.tile"), true);
         } else if (result == CanPickUpResult.BANNED_BLOCK) {
-            player.displayClientMessage(new TranslatableComponent(getDescriptionId() + ".banned.block"), true);
+            player.sendMessage(new TranslatableText(getTranslationKey() + ".banned.block"), true);
         } else {
-            player.displayClientMessage(new TranslatableComponent(getDescriptionId() + ".noData"), true);
+            player.sendMessage(new TranslatableText(getTranslationKey() + ".noData"), true);
         }
-        return InteractionResult.SUCCESS;
+        return ActionResult.SUCCESS;
     }
 
-    protected InteractionResult tryToPlaceBlock(BlockPlaceContext context) {
-        BlockPos pos = context.getClickedPos();
-        InteractionHand hand = context.getHand();
+    protected ActionResult tryToPlaceBlock(ItemPlacementContext context) {
+        BlockPos pos = context.getBlockPos();
+        Hand hand = context.getHand();
         //Move up one if not replaceable
-        float hitX = (float) context.getClickLocation().x(), hitY = (float) context.getClickLocation().y(), hitZ = (float) context.getClickLocation().z();
+        float hitX = (float) context.getHitPos().getX(), hitY = (float) context.getHitPos().getY(), hitZ = (float) context.getHitPos().getZ();
         if (!context.canPlace()) {
-            pos = pos.relative(context.getClickedFace());
+            pos = pos.offset(context.getSide());
         }
 
-        final ItemStack heldItemStack = context.getItemInHand();
+        final ItemStack heldItemStack = context.getStack();
         final BlockState storedBlockState = getStoredBlock(heldItemStack);
-        final CompoundTag storedBlockEntityData = getStoredBlockEntityData(heldItemStack);
+        final NbtCompound storedBlockEntityData = getStoredBlockEntityData(heldItemStack);
         //Check if we can place the given block
-        if (storedBlockState != null && context.getPlayer().mayUseItemAt(pos, context.getClickedFace(), heldItemStack) && context.getLevel().getBlockState(pos).getMaterial().isReplaceable()) {
+        if (storedBlockState != null && context.getPlayer().canPlaceOn(pos, context.getSide(), heldItemStack) && context.getWorld().getBlockState(pos).getMaterial().isReplaceable()) {
             Handler handler = HandlerManager.INSTANCE.getHandler(storedBlockState.getBlock());
-            BlockState blockstate = storedBlockState.getBlock().getStateForPlacement(context);
+            BlockState blockstate = storedBlockState.getBlock().getPlacementState(context);
             //Allow handler to control placement
-            if (handler != null && handler.placeBlock(context.getPlayer(), context.getLevel(), pos, hand, context.getClickedFace(), hitX, hitY, hitZ, storedBlockState, storedBlockEntityData)
+            if (handler != null && handler.placeBlock(context.getPlayer(), context.getWorld(), pos, hand, context.getSide(), hitX, hitY, hitZ, storedBlockState, storedBlockEntityData)
                     //Run normal placement if we don't have a handler or it didn't do anything
-                    || placeBlock(context, blockstate)) {
+                    || place(context, blockstate)) {
                 //Get placed block
-                blockstate = context.getLevel().getBlockState(pos);
+                blockstate = context.getWorld().getBlockState(pos);
 
                 //Allow handle to do post placement modification (e.g. fix rotation)
                 if (handler != null) {
-                    handler.postPlaceBlock(context.getPlayer(), context.getLevel(), pos, hand, context.getClickedFace(), hitX, hitY, hitZ, storedBlockState, storedBlockEntityData);
+                    handler.postPlaceBlock(context.getPlayer(), context.getWorld(), pos, hand, context.getSide(), hitX, hitY, hitZ, storedBlockState, storedBlockEntityData);
                 }
 
                 //Set tile entity data
                 if (storedBlockEntityData != null) {
-                    BlockEntity blockEntity = context.getLevel().getBlockEntity(pos);
+                    BlockEntity blockEntity = context.getWorld().getBlockEntity(pos);
                     if (blockEntity != null) {
                         if (handler != null) {
                             handler.loadData(blockEntity, storedBlockEntityData);
                         } else {
-                            blockEntity.load(storedBlockEntityData);
+                            blockEntity.readNbt(storedBlockEntityData);
                         }
                     }
                 }
 
 
                 //Place audio
-                SoundType soundtype = blockstate.getBlock().getSoundType(blockstate, context.getLevel(), pos, context.getPlayer());
-                context.getLevel().playSound(null, pos, soundtype.getPlaceSound(), SoundSource.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
+                BlockSoundGroup soundtype = blockstate.getBlock().getSoundGroup(blockstate);
+                context.getWorld().playSound(null, pos, soundtype.getPlaceSound(), SoundCategory.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
 
                 //Consume item
-                heldItemStack.shrink(1);
+                heldItemStack.decrement(1);
 
                 //Return empty box
-                if (!context.getPlayer().isCreative() && !context.getPlayer().getInventory().add(new ItemStack(Cardboardboxes.BOX_BLOCK.get()))) {
-                    context.getPlayer().spawnAtLocation(new ItemStack(Cardboardboxes.BOX_BLOCK.get()), 0F);
+                if (!context.getPlayer().isCreative() && !context.getPlayer().getInventory().insertStack(new ItemStack(Cardboardboxes.BOX_BLOCK.get()))) {
+                    Vec3d p = context.getPlayer().getPos();
+                    context.getWorld().spawnEntity(new ItemEntity(context.getWorld(), p.x, p.y, p.z, new ItemStack(Cardboardboxes.BOX_BLOCK.get())));
                 }
             }
 
-            return InteractionResult.SUCCESS;
+            return ActionResult.SUCCESS;
         } else {
-            return InteractionResult.FAIL;
+            return ActionResult.FAIL;
         }
     }
 
-    @Override
-    public int getItemStackLimit(ItemStack stack) {
-        return stack.hasTag() ? 1 : 64;
-    }
+//    @Override
+//    public int getItemStackLimit(ItemStack stack) {
+//        return stack.hasNbt() ? 1 : 64;
+//    }
 
     @Override
-    public void appendHoverText(ItemStack stack, Level worldIn, List<Component> tooltip, TooltipFlag flagIn) {
-        if (stack.getTag() != null && stack.getTag().contains(STORE_ITEM_TAG)) {
-            BlockState state = Block.stateById(stack.getTag().getInt(STORE_ITEM_TAG));
-            tooltip.add(new TranslatableComponent(state.getBlock().getDescriptionId()));
+    public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+        if (stack.hasNbt() && stack.getNbt().contains(STORE_ITEM_TAG)) {
+            BlockState state = Block.getStateFromRawId(stack.getNbt().getInt(STORE_ITEM_TAG));
+            tooltip.add(new TranslatableText(state.getBlock().getTranslationKey()));
         }
     }
 
     public BlockState getStoredBlock(ItemStack stack) {
-        return stack.getTag() != null && stack.getTag().contains(STORE_ITEM_TAG) ? Block.stateById(stack.getTag().getInt(STORE_ITEM_TAG)) : Blocks.AIR.defaultBlockState();
+        return stack.hasNbt() && stack.getNbt().contains(STORE_ITEM_TAG) ? Block.getStateFromRawId(stack.getNbt().getInt(STORE_ITEM_TAG)) : Blocks.AIR.getDefaultState();
     }
 
-    public CompoundTag getStoredBlockEntityData(ItemStack stack) {
-        return stack.getTag() != null && stack.getTag().contains(BLOCK_ENTITY_DATA_TAG) ? stack.getTag().getCompound(BLOCK_ENTITY_DATA_TAG) : null;
+    public NbtCompound getStoredBlockEntityData(ItemStack stack) {
+        return stack.hasNbt() && stack.getNbt().contains(BLOCK_ENTITY_DATA_TAG) ? stack.getNbt().getCompound(BLOCK_ENTITY_DATA_TAG) : null;
     }
 }

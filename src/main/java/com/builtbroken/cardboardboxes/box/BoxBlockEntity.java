@@ -2,11 +2,11 @@ package com.builtbroken.cardboardboxes.box;
 
 import com.builtbroken.cardboardboxes.Cardboardboxes;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.util.math.BlockPos;
 
 /**
  * TileEntity for the box
@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public class BoxBlockEntity extends BlockEntity {
     private BlockState placementState;
-    private CompoundTag placementData;
+    private NbtCompound placementData;
 
     public BoxBlockEntity(BlockPos pos, BlockState state) {
         super(Cardboardboxes.BOX_BLOCK_ENTITY_TYPE.get(), pos, state);
@@ -24,10 +24,10 @@ public class BoxBlockEntity extends BlockEntity {
 
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    public void readNbt(NbtCompound tag) {
+        super.readNbt(tag);
         if (tag.contains("storedTile")) {
-            setStateForPlacement(Block.stateById(tag.getInt("storedTile")));
+            setStateForPlacement(Block.getStateFromRawId(tag.getInt("storedTile")));
             if (tag.contains("tileData")) {
                 setDataForPlacement(tag.getCompound("tileData"));
             }
@@ -35,13 +35,14 @@ public class BoxBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag) {
+    public void writeNbt(NbtCompound tag) {
         if (getStateForPlacement() != null) {
-            tag.putInt("storedTile", Block.getId(placementState));
+            tag.putInt("storedTile", Block.getRawIdFromState(placementState));
             if (getDataForPlacement() != null) {
                 tag.put("tileData", getDataForPlacement());
             }
         }
+        super.writeNbt(tag);
     }
 
     public BlockState getStateForPlacement() {
@@ -52,11 +53,11 @@ public class BoxBlockEntity extends BlockEntity {
         this.placementState = state;
     }
 
-    public CompoundTag getDataForPlacement() {
+    public NbtCompound getDataForPlacement() {
         return placementData;
     }
 
-    public void setDataForPlacement(CompoundTag placementData) {
+    public void setDataForPlacement(NbtCompound placementData) {
         this.placementData = placementData;
     }
 }

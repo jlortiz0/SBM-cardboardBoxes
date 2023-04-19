@@ -82,7 +82,7 @@ public class BoxBlock extends Block implements BlockEntityProvider {
     }
 
     public ItemStack toItemStack(BlockView level, BlockPos pos) {
-        ItemStack stack = new ItemStack(Cardboardboxes.BOX_BLOCK.get());
+        ItemStack stack = new ItemStack(Cardboardboxes.BOX_BLOCK);
 
         if (level.getBlockEntity(pos) instanceof BoxBlockEntity blockEntity) {
             if (blockEntity.getStateForPlacement() != null) {

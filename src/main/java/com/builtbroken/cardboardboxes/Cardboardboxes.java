@@ -1,5 +1,11 @@
 package com.builtbroken.cardboardboxes;
 
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
+import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
+import net.minecraft.block.Material;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -10,20 +16,7 @@ import com.builtbroken.cardboardboxes.handler.HandlerManager;
 import com.builtbroken.cardboardboxes.mods.ModHandler;
 import com.builtbroken.cardboardboxes.mods.VanillaHandler;
 
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.minecraft.block.entity.BlockEntityType;
 
 /**
  * Main mod class, handles registering content and triggering loading of interaction
@@ -31,36 +24,28 @@ import net.minecraftforge.registries.RegistryObject;
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
  * Created by Dark(DarkGuardsman, Robert) on 7/25/2015.
  */
-@Mod.EventBusSubscriber(bus = Bus.MOD)
-@Mod(Cardboardboxes.DOMAIN)
-public class Cardboardboxes {
+
+public class Cardboardboxes implements ModInitializer {
     public static final String DOMAIN = "cardboardboxes";
     public static final String PREFIX = DOMAIN + ":";
-    public static final Logger LOGGER = LogManager.getLogger();
-    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, DOMAIN);
-    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, DOMAIN);
-    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, DOMAIN);
-    public static final RegistryObject<BoxBlock> BOX_BLOCK = BLOCKS.register("cardboardbox", () -> new BoxBlock());
-    public static final RegistryObject<BoxBlockItem> BOX_ITEM = ITEMS.register("cardboardbox", () -> new BoxBlockItem(BOX_BLOCK.get()));
-    public static final RegistryObject<BlockEntityType<BoxBlockEntity>> BOX_BLOCK_ENTITY_TYPE = BLOCK_ENTITY_TYPES.register("box", () -> BlockEntityType.Builder.of(BoxBlockEntity::new, BOX_BLOCK.get()).build(null));
-    private static ForgeConfigSpec config;
+    public static final Logger LOGGER = LogManager.getLogger(DOMAIN);
+    public static final BoxBlock BOX_BLOCK = new BoxBlock(FabricBlockSettings.of(Material.WOOD).hardness(2f));
+    public static final BoxBlockItem BOX_ITEM = new BoxBlockItem(BOX_BLOCK);
+    public static BlockEntityType<BoxBlockEntity> BOX_BLOCK_ENTITY_TYPE;
 
-    public Cardboardboxes() {
-        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
 
-        modBus.addListener(this::setup);
+    @Override
+    public void onInitialize() {
         ModHandler.modSupportHandlerMap.put("minecraft", VanillaHandler.class);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, config = ModHandler.buildHandlerData());
-        LOGGER.info("Finished building the config -> " + config);
-        BLOCKS.register(modBus);
-        BLOCK_ENTITY_TYPES.register(modBus);
-        ITEMS.register(modBus);
-    }
+        Registry.register(Registry.BLOCK, new Identifier(DOMAIN, "cardboard_box"), BOX_BLOCK);
+        Registry.register(Registry.ITEM, new Identifier(DOMAIN, "cardboard_box"), BOX_ITEM);
+        BOX_BLOCK_ENTITY_TYPE = Registry.register(Registry.BLOCK_ENTITY_TYPE, new Identifier(DOMAIN, "cardboard_box"),
+                FabricBlockEntityTypeBuilder.create(BoxBlockEntity::new, BOX_BLOCK).build());
+        HandlerManager.INSTANCE.banBlock(BOX_BLOCK);
+        HandlerManager.INSTANCE.banBlockEntity(BOX_BLOCK_ENTITY_TYPE);
 
-    private void setup(final FMLCommonSetupEvent e) {
-        HandlerManager.INSTANCE.banBlock(BOX_BLOCK.get());
-        HandlerManager.INSTANCE.banBlockEntity(BOX_BLOCK_ENTITY_TYPE.get());
-
-        ModHandler.loadHandlerData(config);
+        // ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, config = ModHandler.buildHandlerData());
+        // LOGGER.info("Finished building the config -> " + config);
+        // ModHandler.loadHandlerData(config);
     }
 }

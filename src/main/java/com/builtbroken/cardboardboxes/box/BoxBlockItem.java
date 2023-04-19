@@ -48,7 +48,7 @@ public class BoxBlockItem extends BlockItem {
     //TODO add property to change render color, label, etc
 
     @Override
-    public ActionResult useOn(ItemUsageContext context) {
+    public ActionResult useOnBlock(ItemUsageContext context) {
         //Run all logic server side
         World level = context.getWorld();
         if (level.isClient) {
@@ -86,7 +86,7 @@ public class BoxBlockItem extends BlockItem {
                 level.removeBlockEntity(pos);
 
                 //Replace block with our block
-                level.setBlockState(pos, Cardboardboxes.BOX_BLOCK.get().defaultBlockState(), 2);
+                level.setBlockState(pos, Cardboardboxes.BOX_BLOCK.getDefaultState(), 2);
 
                 //Get our block entity
                 if (level.getBlockEntity(pos) instanceof BoxBlockEntity boxBlockEntity) {
